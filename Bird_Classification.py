@@ -311,14 +311,11 @@ def processed_img(img_path):
 
 
 def run():
-    img1 = Image.open("./meta/logo1.png")
+    img1 = Image.open("./meta/bird.png")
     img1 = img1.resize((350, 350))
     st.image(img1, use_column_width=False)
     st.title("Birds Species Classification")
-    st.markdown(
-        """<h4 style='text-align: left; color: #d73b5c;'>* Data is based "270 Bird Species also see 70 Sports Dataset"</h4>""",
-        unsafe_allow_html=True,
-    )
+    st.header("Kelompok 2\n")
 
     img_file = st.file_uploader("Choose an Image of Bird", type=["jpg", "png"])
     if img_file is not None:
