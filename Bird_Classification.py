@@ -13,7 +13,7 @@ url = f"https://drive.google.com/uc?id={file_id}"
 
 
 # Tempat penyimpanan sementara
-output = "ModelDl/BC.h5"
+output = "Model/BC.h5"
 
 # Unduh model dari Google Drive
 gdown.download(url, output, quiet=False)
