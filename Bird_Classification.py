@@ -4,6 +4,8 @@ from keras.preprocessing.image import load_img, img_to_array
 import numpy as np
 from keras.models import load_model
 import gdown
+import requests
+from io import BytesIO
 
 # ID file dari Google Drive
 file_id = "100tjmivqh1OAXejHcCz-YHKKOB9q_so4"
@@ -11,7 +13,7 @@ url = f"https://drive.google.com/uc?id={file_id}"
 
 
 # Tempat penyimpanan sementara
-output = "Model/BC.h5"
+output = "ModelDl/BC.h5"
 
 # Unduh model dari Google Drive
 gdown.download(url, output, quiet=False)
@@ -19,7 +21,6 @@ gdown.download(url, output, quiet=False)
 # Load model setelah diunduh
 model = load_model(output, compile=False)
 
-# model = load_model("./Model/BC.h5", compile=False)
 
 lab = {
     0: "AFRICAN CROWNED CRANE",
@@ -301,32 +302,76 @@ def processed_img(img_path):
     img = img / 255
     img = np.expand_dims(img, [0])
     answer = model.predict(img)
+
+    # Mengambil indeks kelas dengan probabilitas tertinggi
+    predicted_class = np.argmax(answer, axis=-1)
+
+    # Mengambil nilai probabilitas untuk kelas tersebut
+    confidence = float(answer[0, predicted_class])
+
+    # Mengambil nama kelas berdasarkan indeks
+    predicted_label = lab[predicted_class[0]]
+
+    return predicted_label, confidence
+
+
+def processed_img_from_url(img_url):
+    response = requests.get(img_url)
+    img = Image.open(BytesIO(response.content))
+    img = img.resize((224, 224))
+    img_array = img_to_array(img)
+    img_array = img_array / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    answer = model.predict(img_array)
     y_class = answer.argmax(axis=-1)
-    print(y_class)
-    y = " ".join(str(x) for x in y_class)
-    y = int(y)
+    confidence = answer[0, y_class[0]]
+    y = int(y_class[0])
     res = lab[y]
-    print(res)
-    return res
+    return res, confidence
 
 
 def run():
     img1 = Image.open("./meta/bird.png")
     img1 = img1.resize((350, 350))
     st.image(img1, use_column_width=False)
-    st.title("Birds Species Classification")
-    st.header("Kelompok 2\n")
+    st.title(":bird: Klasifikasi Spesies Burung")
+    st.header("Kelompok 2")
 
-    img_file = st.file_uploader("Choose an Image of Bird", type=["jpg", "png"])
-    if img_file is not None:
-        st.image(img_file, use_column_width=False)
-        save_image_path = "./upload_images/" + img_file.name
-        with open(save_image_path, "wb") as f:
-            f.write(img_file.getbuffer())
+    option = st.radio("Pilih sumber gambar:", ("Unggah Gambar", "Gunakan URL"))
+    img_file = None
+    img_url = ""
 
-        if st.button("Predict"):
-            result = processed_img(save_image_path)
-            st.success("Predicted Bird is: " + result)
+    if option == "Unggah Gambar":
+        img_file = st.file_uploader("Pilih Gambar Burung (Upload)", type=["jpg", "png"])
+        if img_file is not None:
+            st.image(img_file, use_column_width=False, output_format="JPEG", width=600)
+            save_image_path = "./upload_images/" + img_file.name
+            with open(save_image_path, "wb") as f:
+                f.write(img_file.getbuffer())
+    else:
+        img_url = st.text_input("Masukkan URL Gambar")
+        if img_url:
+            try:
+                response = requests.get(img_url)
+                img = Image.open(BytesIO(response.content))
+                st.image(img, use_column_width=False, output_format="JPEG", width=600)
+            except Exception as e:
+                st.warning(
+                    "Gagal memuat gambar dari URL. Pastikan URL benar dan gambar tersedia."
+                )
+
+    if st.button("Prediksi"):
+        if img_file is not None:
+            result, confidence = processed_img(save_image_path)
+        elif img_url:
+            result, confidence = processed_img_from_url(img_url)
+        else:
+            st.warning("Silakan pilih sumber gambar terlebih dahulu.")
+            return
+
+        st.success(
+            f"Burung yang Diprediksi: {result} dengan kepercayaan {confidence:.2%}"
+        )
 
 
 run()
